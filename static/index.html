@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Voice Medical Intake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F7F9;
+    --panel: #FFFFFF;
+    --border: #E1E5EA;
+    --ink: #1C222C;
+    --ink-muted: #5B6472;
+    --accent: #2C6E63;
+    --accent-soft: #E6EFEC;
+    --amber: #A9670C;
+    --amber-soft: #FBF1DF;
+    --red: #B23A3A;
+    --red-soft: #FBEAEA;
+    --radius: 10px;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    display: grid; grid-template-columns: 300px 1fr; min-height: 100vh;
+  }
+  h1, h2, h3 { font-family: 'Source Serif 4', serif; font-weight: 600; margin: 0; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* Sidebar */
+  aside {
+    border-right: 1px solid var(--border); background: var(--panel);
+    display: flex; flex-direction: column; padding: 20px 16px;
+  }
+  aside h1 { font-size: 19px; letter-spacing: -0.01em; }
+  aside .tagline { font-size: 12px; color: var(--ink-muted); margin-top: 4px; margin-bottom: 20px; }
+  #newPatientForm { display: flex; gap: 6px; margin-bottom: 16px; }
+  #newPatientForm input {
+    flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px;
+  }
+  #newPatientForm button, .btn {
+    background: var(--ink); color: white; border: none; border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; cursor: pointer; font-weight: 500;
+  }
+  #newPatientForm button:hover, .btn:hover { opacity: 0.88; }
+  #patientList { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+  #patientList li {
+    padding: 10px 10px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  #patientList li:hover { background: var(--bg); }
+  #patientList li.active { background: var(--accent-soft); }
+  #patientList .pname { font-size: 13.5px; font-weight: 500; }
+  #patientList .pid { font-size: 11px; color: var(--ink-muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.complete { background: var(--accent); }
+  .dot.incomplete { background: var(--amber); }
+
+  /* Main */
+  main { padding: 28px 36px; overflow-y: auto; }
+  .empty { color: var(--ink-muted); margin-top: 80px; text-align: center; font-size: 14px; }
+
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+  .header-row h2 { font-size: 24px; }
+  .header-row .meta { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
+
+  .ring-wrap { display: flex; align-items: center; gap: 10px; }
+  #ringSvg circle.track { stroke: var(--border); }
+  #ringSvg circle.fill { stroke: var(--accent); transition: stroke-dashoffset 0.4s ease; }
+  .ring-label { font-size: 12px; color: var(--ink-muted); }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+  .tabs button {
+    background: none; border: none; padding: 10px 14px; font-size: 13.5px; font-weight: 500;
+    color: var(--ink-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tabs button.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; margin-bottom: 16px;
+  }
+  .card h3 { font-size: 14px; margin-bottom: 10px; }
+
+  .field-checklist { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .chip.done { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .chip.pending { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
+
+  #recordBtn {
+    display: flex; align-items: center; gap: 8px; background: var(--accent); color: white;
+    border: none; border-radius: 999px; padding: 10px 18px; font-size: 13.5px; font-weight: 500; cursor: pointer;
+  }
+  #recordBtn.recording { background: var(--red); }
+  #recordBtn .pulse { width: 8px; height: 8px; border-radius: 50%; background: white; }
+  #recordBtn.recording .pulse { animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  #recordStatus { font-size: 12px; color: var(--ink-muted); margin-left: 10px; }
+
+  .transcript-box {
+    background: var(--bg); border-radius: 8px; padding: 12px; font-size: 13px; color: var(--ink-muted);
+    margin-top: 12px; font-style: italic;
+  }
+
+  /* Messages */
+  .messages { display: flex; flex-direction: column; gap: 10px; max-height: 55vh; overflow-y: auto; padding: 4px; }
+  .msg { max-width: 78%; padding: 10px 13px; border-radius: 10px; font-size: 13.5px; line-height: 1.45; }
+  .msg .role-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.65; margin-bottom: 3px; display: block; }
+  .msg.doctor { align-self: flex-end; background: var(--ink); color: white; }
+  .msg.ai { align-self: flex-start; background: var(--accent-soft); border: 1px solid var(--accent); }
+  .msg.system { align-self: center; background: var(--amber-soft); border: 1px solid var(--amber); font-size: 12.5px; max-width: 90%; }
+  .msg.patient_voice { align-self: flex-start; background: var(--panel); border: 1px solid var(--border); }
+  .msg.emergency { background: var(--red-soft) !important; border-color: var(--red) !important; }
+
+  .chat-input { display: flex; gap: 8px; margin-top: 14px; }
+  .chat-input input {
+    flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13.5px;
+  }
+
+  .disclaimer {
+    font-size: 11px; color: var(--ink-muted); border-top: 1px solid var(--border); padding-top: 10px; margin-top: 14px;
+  }
+
+  .allergy-list, .med-list, .cond-list { font-size: 13px; list-style: none; padding: 0; margin: 0; }
+  .allergy-list li, .med-list li, .cond-list li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; border-bottom: 1px solid var(--bg);
+  }
+  .allergy-list li:last-child, .med-list li:last-child, .cond-list li:last-child { border-bottom: none; }
+  .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; font-size: 12px; color: var(--ink-muted);
+    padding: 2px 4px; border-radius: 4px;
+  }
+  .icon-btn:hover { background: var(--bg); color: var(--ink); }
+  .icon-btn.danger:hover { color: var(--red); background: var(--red-soft); }
+  .sev-high { color: var(--red); font-weight: 600; }
+  .sev-moderate { color: var(--amber); font-weight: 600; }
+
+  .link-btn {
+    background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 500;
+    cursor: pointer; padding: 2px 4px;
+  }
+  .link-btn:hover { text-decoration: underline; }
+  .btn-secondary {
+    background: none; border: 1px solid var(--border); color: var(--ink-muted); border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; cursor: pointer;
+  }
+  .section-divider { border-top: 1px solid var(--border); margin: 14px 0 10px; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
+  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .edit-grid input {
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px;
+  }
+  .add-row { display: flex; gap: 6px; margin-top: 6px; }
+  .add-row input {
+    flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12.5px;
+  }
+  .msg.correction {
+    align-self: center; background: #EEF0F3; border: 1px solid var(--border); font-size: 12px;
+    color: var(--ink-muted); max-width: 90%; font-family: 'IBM Plex Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<aside>
+  <h1>Voice Intake</h1>
+  <div class="tagline">Local, offline patient profiling</div>
+  <form id="newPatientForm">
+    <input id="newPatientName" placeholder="New patient name (optional)" />
+    <button type="submit">Add</button>
+  </form>
+  <ul id="patientList"></ul>
+</aside>
+
+<main>
+  <div id="emptyState" class="empty">Select or create a patient to begin.</div>
+
+  <div id="patientView" style="display:none;">
+    <div class="header-row">
+      <div>
+        <h2 id="pName">—</h2>
+        <div class="meta mono" id="pMeta">—</div>
+      </div>
+      <div class="ring-wrap">
+        <svg id="ringSvg" width="46" height="46" viewBox="0 0 46 46">
+          <circle class="track" cx="23" cy="23" r="19" fill="none" stroke-width="5"/>
+          <circle class="fill" cx="23" cy="23" r="19" fill="none" stroke-width="5"
+                  stroke-dasharray="119.4" stroke-dashoffset="119.4" stroke-linecap="round"
+                  transform="rotate(-90 23 23)"/>
+        </svg>
+        <div class="ring-label" id="ringLabel">0 / 6</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button id="tabIntakeBtn" class="active">Intake</button>
+      <button id="tabConsultBtn">Consult</button>
+      <button id="tabHistoryBtn">Full history</button>
+    </div>
+
+    <!-- INTAKE -->
+    <div id="tabIntake">
+      <div class="card">
+        <h3>Required for a complete profile</h3>
+        <div class="field-checklist" id="fieldChecklist"></div>
+      </div>
+
+      <div class="card">
+        <h3>Record a voice note</h3>
+        <button id="recordBtn"><span class="pulse"></span><span id="recordBtnLabel">Start recording</span></button>
+        <span id="recordStatus"></span>
+        <div id="transcriptBox" class="transcript-box" style="display:none;"></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <h3 style="margin:0;">Profile</h3>
+          <button class="link-btn" id="editProfileBtn">Correct</button>
+        </div>
+        <div id="profileView">
+          <p style="font-size:13px;"><b>Name:</b> <span id="pNameView">—</span> &nbsp; <b>Sex:</b> <span id="pSex">—</span></p>
+          <p style="font-size:13px;"><b>Blood group:</b> <span id="pBlood">—</span> &nbsp; <b>DOB:</b> <span id="pDob">—</span></p>
+        </div>
+        <div id="profileEditForm" style="display:none;">
+          <div class="edit-grid">
+            <input id="editName" placeholder="Name" />
+            <input id="editDob" type="date" />
+            <input id="editBlood" placeholder="Blood group (e.g. O+)" />
+            <input id="editSex" placeholder="Sex" />
+          </div>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="btn" id="saveProfileBtn">Save correction</button>
+            <button class="btn-secondary" id="cancelProfileBtn">Cancel</button>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="section-header">
+          <b>Allergies</b>
+          <button class="link-btn" data-field="allergies" onclick="reviewReset(this)">Mark for re-review</button>
+        </div>
+        <ul class="allergy-list" id="pAllergies"></ul>
+        <div class="add-row">
+          <input id="newAllergySubstance" placeholder="Substance" />
+          <input id="newAllergyReaction" placeholder="Reaction" />
+          <input id="newAllergySeverity" placeholder="Severity" style="width:90px;" />
+          <button class="link-btn" onclick="addAllergy()">+ Add</button>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="section-header">
+          <b>Medications</b>
+          <button class="link-btn" data-field="medications" onclick="reviewReset(this)">Mark for re-review</button>
+        </div>
+        <ul class="med-list" id="pMeds"></ul>
+        <div class="add-row">
+          <input id="newMedName" placeholder="Name" />
+          <input id="newMedDosage" placeholder="Dosage" style="width:90px;" />
+          <input id="newMedFrequency" placeholder="Frequency" style="width:100px;" />
+          <button class="link-btn" onclick="addMedication()">+ Add</button>
+        </div>
+
+        <div class="section-divider"></div>
+        <div class="section-header">
+          <b>Conditions</b>
+          <button class="link-btn" data-field="conditions" onclick="reviewReset(this)">Mark for re-review</button>
+        </div>
+        <ul class="cond-list" id="pConds"></ul>
+        <div class="add-row">
+          <input id="newCondName" placeholder="Name" />
+          <input id="newCondNotes" placeholder="Notes" />
+          <button class="link-btn" onclick="addCondition()">+ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSULT -->
+    <div id="tabConsult" style="display:none;">
+      <div class="card">
+        <div class="messages" id="consultMessages"></div>
+        <div class="chat-input">
+          <input id="chatInput" placeholder="Ask the medical assistant (general info only)..." />
+          <button class="btn" id="chatSendBtn">Send</button>
+        </div>
+        <div class="disclaimer">General, educational information only. Not a diagnosis. In an emergency, contact local emergency services immediately.</div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="tabHistory" style="display:none;">
+      <div class="card">
+        <div class="messages" id="historyMessages" style="max-height: 65vh;"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = "";
+let patients = [];
+let activePatient = null;
+const REQUIRED = [
+  {key: "name", label: "Name"},
+  {key: "dob", label: "Date of birth"},
+  {key: "blood_group", label: "Blood group"},
+  {key: "allergies_reviewed", label: "Allergies"},
+  {key: "medications_reviewed", label: "Medications"},
+  {key: "conditions_reviewed", label: "Conditions"},
+];
+
+async function loadPatients() {
+  const res = await fetch(`${API}/patients`);
+  patients = await res.json();
+  renderPatientList();
+}
+
+function renderPatientList() {
+  const ul = document.getElementById("patientList");
+  ul.innerHTML = "";
+  for (const p of patients) {
+    const li = document.createElement("li");
+    li.className = activePatient && activePatient.id === p.id ? "active" : "";
+    li.innerHTML = `
+      <div>
+        <div class="pname">${p.name || "Unnamed patient"}</div>
+        <div class="pid">#${p.id}</div>
+      </div>
+      <div class="dot ${p.is_complete ? 'complete' : 'incomplete'}"></div>
+    `;
+    li.onclick = () => selectPatient(p.id);
+    ul.appendChild(li);
+  }
+}
+
+document.getElementById("newPatientForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const name = document.getElementById("newPatientName").value.trim();
+  const res = await fetch(`${API}/patients`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name: name || null})
+  });
+  const p = await res.json();
+  document.getElementById("newPatientName").value = "";
+  await loadPatients();
+  selectPatient(p.id);
+};
+
+async function selectPatient(id) {
+  const res = await fetch(`${API}/patients/${id}`);
+  activePatient = await res.json();
+  document.getElementById("emptyState").style.display = "none";
+  document.getElementById("patientView").style.display = "block";
+  renderPatientList();
+  renderPatientView();
+  loadMessages();
+}
+
+function renderPatientView() {
+  const p = activePatient;
+  document.getElementById("pName").textContent = p.name || "Unnamed patient";
+  document.getElementById("pMeta").textContent = `#${p.id} · created record`;
+  document.getElementById("pNameView").textContent = p.name || "unknown";
+  document.getElementById("pSex").textContent = p.sex || "unknown";
+  document.getElementById("pBlood").textContent = p.blood_group || "unknown";
+  document.getElementById("pDob").textContent = p.dob || "unknown";
+
+  const done = REQUIRED.filter(f => p[f.key]).length;
+  document.getElementById("ringLabel").textContent = `${done} / ${REQUIRED.length}`;
+  const circle = document.querySelector("#ringSvg circle.fill");
+  const circumference = 119.4;
+  const offset = circumference * (1 - done / REQUIRED.length);
+  circle.style.strokeDashoffset = offset;
+
+  const checklist = document.getElementById("fieldChecklist");
+  checklist.innerHTML = "";
+  for (const f of REQUIRED) {
+    const chip = document.createElement("span");
+    chip.className = `chip ${p[f.key] ? 'done' : 'pending'}`;
+    chip.textContent = (p[f.key] ? "✓ " : "○ ") + f.label;
+    checklist.appendChild(chip);
+  }
+
+  const allergiesEl = document.getElementById("pAllergies");
+  allergiesEl.innerHTML = p.allergies.length
+    ? p.allergies.map(a => `
+        <li>
+          <span><b>${a.substance}</b> — ${a.reaction || 'reaction unspecified'} <span class="${a.severity==='high'?'sev-high':a.severity==='moderate'?'sev-moderate':''}">${a.severity ? '('+a.severity+')' : ''}</span></span>
+          <span class="item-actions">
+            <button class="icon-btn" onclick="editAllergy(${a.id})">✎</button>
+            <button class="icon-btn danger" onclick="deleteAllergy(${a.id})">✕</button>
+          </span>
+        </li>`).join("")
+    : (p.allergies_reviewed ? "<li><span style='color:var(--ink-muted)'>None reported</span></li>" : "<li style='color:var(--ink-muted)'>Not yet reviewed</li>");
+
+  const medsEl = document.getElementById("pMeds");
+  medsEl.innerHTML = p.medications.length
+    ? p.medications.map(m => `
+        <li>
+          <span><b>${m.name}</b> ${m.dosage||''} ${m.frequency||''}</span>
+          <span class="item-actions">
+            <button class="icon-btn" onclick="editMedication(${m.id})">✎</button>
+            <button class="icon-btn danger" onclick="deleteMedication(${m.id})">✕</button>
+          </span>
+        </li>`).join("")
+    : (p.medications_reviewed ? "<li><span style='color:var(--ink-muted)'>None reported</span></li>" : "<li style='color:var(--ink-muted)'>Not yet reviewed</li>");
+
+  const condsEl = document.getElementById("pConds");
+  condsEl.innerHTML = p.conditions.length
+    ? p.conditions.map(c => `
+        <li>
+          <span><b>${c.name}</b> ${c.notes||''}</span>
+          <span class="item-actions">
+            <button class="icon-btn" onclick="editCondition(${c.id})">✎</button>
+            <button class="icon-btn danger" onclick="deleteCondition(${c.id})">✕</button>
+          </span>
+        </li>`).join("")
+    : (p.conditions_reviewed ? "<li><span style='color:var(--ink-muted)'>None reported</span></li>" : "<li style='color:var(--ink-muted)'>Not yet reviewed</li>");
+}
+
+// ---------------- Corrections: scalar profile fields ----------------
+
+document.getElementById("editProfileBtn").onclick = () => {
+  const p = activePatient;
+  document.getElementById("editName").value = p.name || "";
+  document.getElementById("editDob").value = p.dob || "";
+  document.getElementById("editBlood").value = p.blood_group || "";
+  document.getElementById("editSex").value = p.sex || "";
+  document.getElementById("profileView").style.display = "none";
+  document.getElementById("profileEditForm").style.display = "block";
+};
+document.getElementById("cancelProfileBtn").onclick = () => {
+  document.getElementById("profileView").style.display = "block";
+  document.getElementById("profileEditForm").style.display = "none";
+};
+document.getElementById("saveProfileBtn").onclick = async () => {
+  const body = {
+    name: document.getElementById("editName").value.trim() || null,
+    dob: document.getElementById("editDob").value || null,
+    blood_group: document.getElementById("editBlood").value.trim() || null,
+    sex: document.getElementById("editSex").value.trim() || null,
+  };
+  const res = await fetch(`${API}/patients/${activePatient.id}`, {
+    method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+  });
+  activePatient = await res.json();
+  document.getElementById("profileView").style.display = "block";
+  document.getElementById("profileEditForm").style.display = "none";
+  renderPatientView();
+  await loadPatients();
+};
+
+// ---------------- Corrections: mark a category for re-review ----------------
+
+async function reviewReset(btn) {
+  const field = btn.dataset.field;
+  if (!confirm(`Mark ${field} as needing re-review? Existing entries stay until you edit/delete them individually.`)) return;
+  const res = await fetch(`${API}/patients/${activePatient.id}/review-reset`, {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({field})
+  });
+  activePatient = await res.json();
+  renderPatientView();
+  await loadPatients();
+}
+
+// ---------------- Corrections: allergies ----------------
+
+async function addAllergy() {
+  const substance = document.getElementById("newAllergySubstance").value.trim();
+  if (!substance) return;
+  const body = {
+    substance,
+    reaction: document.getElementById("newAllergyReaction").value.trim() || null,
+    severity: document.getElementById("newAllergySeverity").value.trim() || null,
+  };
+  await fetch(`${API}/patients/${activePatient.id}/allergies`, {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+  });
+  document.getElementById("newAllergySubstance").value = "";
+  document.getElementById("newAllergyReaction").value = "";
+  document.getElementById("newAllergySeverity").value = "";
+  await refreshActivePatient();
+}
+
+async function editAllergy(id) {
+  const a = activePatient.allergies.find(x => x.id === id);
+  const substance = prompt("Substance:", a.substance);
+  if (substance === null) return;
+  const reaction = prompt("Reaction:", a.reaction || "");
+  const severity = prompt("Severity:", a.severity || "");
+  await fetch(`${API}/patients/${activePatient.id}/allergies/${id}`, {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({substance, reaction, severity})
+  });
+  await refreshActivePatient();
+}
+
+async function deleteAllergy(id) {
+  if (!confirm("Remove this allergy? This is logged as a correction.")) return;
+  await fetch(`${API}/patients/${activePatient.id}/allergies/${id}`, {method: "DELETE"});
+  await refreshActivePatient();
+}
+
+// ---------------- Corrections: medications ----------------
+
+async function addMedication() {
+  const name = document.getElementById("newMedName").value.trim();
+  if (!name) return;
+  const body = {
+    name,
+    dosage: document.getElementById("newMedDosage").value.trim() || null,
+    frequency: document.getElementById("newMedFrequency").value.trim() || null,
+  };
+  await fetch(`${API}/patients/${activePatient.id}/medications`, {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+  });
+  document.getElementById("newMedName").value = "";
+  document.getElementById("newMedDosage").value = "";
+  document.getElementById("newMedFrequency").value = "";
+  await refreshActivePatient();
+}
+
+async function editMedication(id) {
+  const m = activePatient.medications.find(x => x.id === id);
+  const name = prompt("Name:", m.name);
+  if (name === null) return;
+  const dosage = prompt("Dosage:", m.dosage || "");
+  const frequency = prompt("Frequency:", m.frequency || "");
+  await fetch(`${API}/patients/${activePatient.id}/medications/${id}`, {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name, dosage, frequency})
+  });
+  await refreshActivePatient();
+}
+
+async function deleteMedication(id) {
+  if (!confirm("Remove this medication? This is logged as a correction.")) return;
+  await fetch(`${API}/patients/${activePatient.id}/medications/${id}`, {method: "DELETE"});
+  await refreshActivePatient();
+}
+
+// ---------------- Corrections: conditions ----------------
+
+async function addCondition() {
+  const name = document.getElementById("newCondName").value.trim();
+  if (!name) return;
+  const body = { name, notes: document.getElementById("newCondNotes").value.trim() || null };
+  await fetch(`${API}/patients/${activePatient.id}/conditions`, {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)
+  });
+  document.getElementById("newCondName").value = "";
+  document.getElementById("newCondNotes").value = "";
+  await refreshActivePatient();
+}
+
+async function editCondition(id) {
+  const c = activePatient.conditions.find(x => x.id === id);
+  const name = prompt("Name:", c.name);
+  if (name === null) return;
+  const notes = prompt("Notes:", c.notes || "");
+  await fetch(`${API}/patients/${activePatient.id}/conditions/${id}`, {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({name, notes})
+  });
+  await refreshActivePatient();
+}
+
+async function deleteCondition(id) {
+  if (!confirm("Remove this condition? This is logged as a correction.")) return;
+  await fetch(`${API}/patients/${activePatient.id}/conditions/${id}`, {method: "DELETE"});
+  await refreshActivePatient();
+}
+
+async function refreshActivePatient() {
+  const res = await fetch(`${API}/patients/${activePatient.id}`);
+  activePatient = await res.json();
+  renderPatientView();
+  await loadPatients();
+}
+
+// Tabs
+const tabs = {
+  intake: [document.getElementById("tabIntakeBtn"), document.getElementById("tabIntake")],
+  consult: [document.getElementById("tabConsultBtn"), document.getElementById("tabConsult")],
+  history: [document.getElementById("tabHistoryBtn"), document.getElementById("tabHistory")],
+};
+function showTab(name) {
+  for (const k in tabs) {
+    tabs[k][0].classList.toggle("active", k === name);
+    tabs[k][1].style.display = k === name ? "block" : "none";
+  }
+}
+tabs.intake[0].onclick = () => showTab("intake");
+tabs.consult[0].onclick = () => { showTab("consult"); loadMessages(); };
+tabs.history[0].onclick = () => { showTab("history"); loadMessages(); };
+
+// Voice recording
+let mediaRecorder, audioChunks = [];
+document.getElementById("recordBtn").onclick = async () => {
+  const btn = document.getElementById("recordBtn");
+  if (!mediaRecorder || mediaRecorder.state === "inactive") {
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+    mediaRecorder.onstop = uploadVoiceNote;
+    mediaRecorder.start();
+    btn.classList.add("recording");
+    document.getElementById("recordBtnLabel").textContent = "Stop recording";
+    document.getElementById("recordStatus").textContent = "";
+  } else {
+    mediaRecorder.stop();
+    btn.classList.remove("recording");
+    document.getElementById("recordBtnLabel").textContent = "Start recording";
+    document.getElementById("recordStatus").textContent = "Processing…";
+  }
+};
+
+async function uploadVoiceNote() {
+  const blob = new Blob(audioChunks, {type: "audio/webm"});
+  const form = new FormData();
+  form.append("file", blob, "note.webm");
+  const res = await fetch(`${API}/patients/${activePatient.id}/voice-intake`, {method: "POST", body: form});
+  document.getElementById("recordStatus").textContent = "";
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({detail: "Upload failed"}));
+    document.getElementById("recordStatus").textContent = err.detail || "Something went wrong.";
+    return;
+  }
+  const data = await res.json();
+  const box = document.getElementById("transcriptBox");
+  box.style.display = "block";
+  box.textContent = `"${data.transcript}"`;
+  activePatient = data.profile;
+  renderPatientView();
+  await loadPatients();
+  if (data.follow_up_prompt) {
+    document.getElementById("recordStatus").textContent = data.follow_up_prompt;
+  } else if (data.ai_summary) {
+    document.getElementById("recordStatus").textContent = "Profile complete — see the Consult tab for the initial summary.";
+  }
+}
+
+// Chat
+document.getElementById("chatSendBtn").onclick = sendChat;
+document.getElementById("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+
+async function sendChat() {
+  const input = document.getElementById("chatInput");
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = "";
+  appendMessage("doctor", message);
+  const res = await fetch(`${API}/patients/${activePatient.id}/chat`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({message, stream: false})
+  });
+  const data = await res.json();
+  appendMessage("ai", data.reply);
+}
+
+function appendMessage(role, content) {
+  const container = document.getElementById("consultMessages");
+  const div = document.createElement("div");
+  const isEmergency = content.startsWith("⚠️");
+  div.className = `msg ${role}` + (isEmergency ? " emergency" : "");
+  div.innerHTML = `<span class="role-tag">${role.replace('_',' ')}</span>${content.replace(/\n/g,"<br>")}`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function loadMessages() {
+  const res = await fetch(`${API}/patients/${activePatient.id}/messages`);
+  const messages = await res.json();
+
+  const consultBox = document.getElementById("consultMessages");
+  consultBox.innerHTML = "";
+  messages.filter(m => m.role === "doctor" || m.role === "ai").forEach(m => appendMessage(m.role, m.content));
+
+  const historyBox = document.getElementById("historyMessages");
+  historyBox.innerHTML = "";
+  messages.forEach(m => {
+    const div = document.createElement("div");
+    const isEmergency = m.content.startsWith("⚠️");
+    div.className = `msg ${m.role}` + (isEmergency ? " emergency" : "");
+    div.innerHTML = `<span class="role-tag">${m.role.replace('_',' ')} · ${new Date(m.created_at).toLocaleString()}</span>${m.content.replace(/\n/g,"<br>")}`;
+    historyBox.appendChild(div);
+  });
+}
+
+loadPatients();
+</script>
+</body>
+</html>
