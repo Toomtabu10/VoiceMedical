@@ -10,7 +10,7 @@ from app.database import Base, engine, get_db
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Voice Medical Intake")
+app = FastAPI(title="Voice Medical")
 
 
 # ---------------------------------------------------------------- patients
