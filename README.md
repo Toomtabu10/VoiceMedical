@@ -1,4 +1,4 @@
-# Voice Medical Intake
+# Voice Medical
 
 A locally-run FastAPI + SQLite app that builds a structured patient
 profile from spoken voice notes. It transcribes audio offline (faster-whisper),
